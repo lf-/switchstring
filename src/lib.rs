@@ -69,6 +69,7 @@ impl<'a> Substring<'a> {
         if let Some(ref next) = self.next {
             let suffix = next.eval();
             let prefix = &self.this;
+            println!("eval prefix {:?} suffix {:?}", suffix, prefix);
             match (prefix.neg, suffix.neg) {
                 (Negation::No, Negation::No) => Inner {
                     s: prefix.s.clone() + suffix.s,
@@ -102,6 +103,12 @@ impl<'a> Substring<'a> {
     }
 }
 
+impl<'a> AsRef<Substring<'a>> for Substring<'a> {
+    fn as_ref(&self) -> &Substring<'a> {
+        self
+    }
+}
+
 impl<'a> Neg for Substring<'a> {
     type Output = Substring<'a>;
 
@@ -116,19 +123,19 @@ impl<'a> Neg for Substring<'a> {
     }
 }
 
-impl<'a> Add for Substring<'a> {
+impl<'a, AR: AsRef<Substring<'a>>> Add<AR> for Substring<'a> {
     type Output = Substring<'a>;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        self.concat(&rhs)
+    fn add(self, rhs: AR) -> Self::Output {
+        self.concat(rhs.as_ref())
     }
 }
 
-impl<'a> Sub for Substring<'a> {
+impl<'a, AR: AsRef<Substring<'a>>> Sub<AR> for Substring<'a> {
     type Output = Substring<'a>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + -rhs
+    fn sub(self, rhs: AR) -> Self::Output {
+        self + -(rhs.as_ref())
     }
 }
 
@@ -146,19 +153,19 @@ impl<'a> Neg for &Substring<'a> {
     }
 }
 
-impl<'a> Add for &Substring<'a> {
+impl<'a, AR: AsRef<Substring<'a>>> Add<AR> for &Substring<'a> {
     type Output = Substring<'a>;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        self.concat(rhs)
+    fn add(self, rhs: AR) -> Self::Output {
+        self.concat(rhs.as_ref())
     }
 }
 
-impl<'a> Sub for &Substring<'a> {
+impl<'a, AR: AsRef<Substring<'a>>> Sub<AR> for &Substring<'a> {
     type Output = Substring<'a>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + &-rhs
+    fn sub(self, rhs: AR) -> Self::Output {
+        self + -rhs.as_ref()
     }
 }
 
@@ -206,7 +213,7 @@ mod tests {
         let a: Substring = "aa".into();
         let b: Substring = "bb".into();
         let c: Substring = "cc".into();
-        let s: String = (((((&a + &b) - &c) + &c) + &a) - &a).into();
+        let s: String = (&a + &b - &c + &c + &a - &a).into();
         assert_eq!("aabb", &s);
     }
 
