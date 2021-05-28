@@ -1,9 +1,12 @@
 [package]
 name = "switchstring"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 license = "0BSD"
 description = "subtractable strings"
+repository = "https://github.com/lf-/switchstring"
+homepage = "https://github.com/lf-/switchstring"
+documentation = "https://docs.rs/switchstring"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
