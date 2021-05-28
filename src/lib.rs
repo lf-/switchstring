@@ -28,23 +28,23 @@ struct Inner<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Substring<'a> {
+pub struct Switchstring<'a> {
     this: Inner<'a>,
-    prev: Option<Arc<Substring<'a>>>,
+    prev: Option<Arc<Switchstring<'a>>>,
 }
 
-impl<'a> Substring<'a> {
-    fn concat<'b: 'a>(&self, other: &Substring<'b>) -> Substring<'a> {
+impl<'a> Switchstring<'a> {
+    fn concat<'b: 'a>(&self, other: &Switchstring<'b>) -> Switchstring<'a> {
         // base case: self is the end of a list and other is an arbitrary substring
         // recursive case:
         if let Some(ref next) = self.prev {
-            Substring {
+            Switchstring {
                 this: self.this.clone(),
                 prev: Some(Arc::new(next.concat(other))),
             }
         } else {
             // base case: directly put the next list in the next field
-            Substring {
+            Switchstring {
                 this: self.this.clone(),
                 prev: Some(Arc::new(other.clone())),
             }
@@ -91,17 +91,17 @@ impl<'a> Substring<'a> {
     }
 }
 
-impl<'a> AsRef<Substring<'a>> for Substring<'a> {
-    fn as_ref(&self) -> &Substring<'a> {
+impl<'a> AsRef<Switchstring<'a>> for Switchstring<'a> {
+    fn as_ref(&self) -> &Switchstring<'a> {
         self
     }
 }
 
-impl<'a> Neg for Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a> Neg for Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn neg(self) -> Self::Output {
-        Substring {
+        Switchstring {
             this: Inner {
                 s: self.this.s.clone(),
                 neg: -self.this.neg,
@@ -111,27 +111,27 @@ impl<'a> Neg for Substring<'a> {
     }
 }
 
-impl<'a, AR: AsRef<Substring<'a>>> Add<AR> for Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a, AR: AsRef<Switchstring<'a>>> Add<AR> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn add(self, rhs: AR) -> Self::Output {
         rhs.as_ref().concat(&self)
     }
 }
 
-impl<'a, AR: AsRef<Substring<'a>>> Sub<AR> for Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a, AR: AsRef<Switchstring<'a>>> Sub<AR> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn sub(self, rhs: AR) -> Self::Output {
         self + -(rhs.as_ref())
     }
 }
 
-impl<'a> Neg for &Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a> Neg for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn neg(self) -> Self::Output {
-        Substring {
+        Switchstring {
             this: Inner {
                 s: self.this.s.clone(),
                 neg: -self.this.neg,
@@ -141,24 +141,24 @@ impl<'a> Neg for &Substring<'a> {
     }
 }
 
-impl<'a, AR: AsRef<Substring<'a>>> Add<AR> for &Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a, AR: AsRef<Switchstring<'a>>> Add<AR> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn add(self, rhs: AR) -> Self::Output {
         rhs.as_ref().concat(&self)
     }
 }
 
-impl<'a, AR: AsRef<Substring<'a>>> Sub<AR> for &Substring<'a> {
-    type Output = Substring<'a>;
+impl<'a, AR: AsRef<Switchstring<'a>>> Sub<AR> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
 
     fn sub(self, rhs: AR) -> Self::Output {
         self + -rhs.as_ref()
     }
 }
 
-impl<'a> From<Substring<'a>> for String {
-    fn from(s: Substring) -> Self {
+impl<'a> From<Switchstring<'a>> for String {
+    fn from(s: Switchstring) -> Self {
         match s.eval() {
             Inner {
                 s,
@@ -172,9 +172,9 @@ impl<'a> From<Substring<'a>> for String {
     }
 }
 
-impl<'a> From<String> for Substring<'a> {
+impl<'a> From<String> for Switchstring<'a> {
     fn from(s: String) -> Self {
-        Substring {
+        Switchstring {
             this: Inner {
                 s: Cow::Owned(s),
                 neg: Negation::No,
@@ -184,7 +184,7 @@ impl<'a> From<String> for Substring<'a> {
     }
 }
 
-impl<'a> From<&str> for Substring<'a> {
+impl<'a> From<&str> for Switchstring<'a> {
     fn from(s: &str) -> Self {
         s.to_string().into()
     }
@@ -196,7 +196,7 @@ mod tests {
 
     use crate::Negation;
 
-    use super::{Inner, Substring};
+    use super::{Inner, Switchstring};
 
     impl<'a> Inner<'a> {
         fn new(s: String, negated: bool) -> Inner<'a> {
@@ -212,28 +212,28 @@ mod tests {
 
     #[test]
     fn exprs() {
-        let a: Substring = "aa".into();
-        let b: Substring = "bb".into();
-        let c: Substring = "cc".into();
+        let a: Switchstring = "aa".into();
+        let b: Switchstring = "bb".into();
+        let c: Switchstring = "cc".into();
         let s: String = (&a + &b - &c + &c + &a - &a - &b).into();
         assert_eq!("aabbcc", &s);
     }
 
     #[test]
     fn concat() {
-        let a = Substring {
+        let a = Switchstring {
             this: Inner::new("aa".to_string(), false),
             prev: None,
         };
 
-        let b = Substring {
+        let b = Switchstring {
             this: Inner::new("bb".to_string(), true),
             prev: None,
         };
 
-        let exp = Substring {
+        let exp = Switchstring {
             this: Inner::new("aa".to_string(), false),
-            prev: Some(Arc::new(Substring {
+            prev: Some(Arc::new(Switchstring {
                 this: Inner::new("bb".to_string(), true),
                 prev: None,
             })),
@@ -243,12 +243,12 @@ mod tests {
 
         assert_eq!(&exp, &res);
 
-        let exp2 = Substring {
+        let exp2 = Switchstring {
             this: Inner::new("cc".to_string(), false),
             prev: Some(Arc::new(exp)),
         };
 
-        let c = Substring {
+        let c = Switchstring {
             this: Inner::new("cc".to_string(), false),
             prev: None,
         };
