@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     ops::{Add, Neg, Sub},
+    sync::Arc,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,36 +42,36 @@ impl<'a> Inner<'a> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Substring<'a> {
     this: Inner<'a>,
-    next: Option<Box<Substring<'a>>>,
+    next: Option<Arc<Substring<'a>>>,
 }
 
 impl<'a> Substring<'a> {
-    fn concat<'b: 'a>(self, other: Substring<'b>) -> Substring<'a> {
+    fn concat<'b: 'a>(&self, other: &Substring<'b>) -> Substring<'a> {
         // base case: self is the end of a list and other is an arbitrary substring
         // recursive case:
-        if let Some(next) = self.next {
+        if let Some(ref next) = self.next {
             Substring {
-                this: self.this,
-                next: Some(Box::new(next.concat(other))),
+                this: self.this.clone(),
+                next: Some(Arc::new(next.concat(other))),
             }
         } else {
             // base case: directly put the next list in the next field
             Substring {
-                this: self.this,
-                next: Some(Box::new(other)),
+                this: self.this.clone(),
+                next: Some(Arc::new(other.clone())),
             }
         }
     }
 
-    fn eval(self) -> Inner<'a> {
+    fn eval(&self) -> Inner<'a> {
         // base case: end of the list
         // recursive case: evaluate rhs and then self
-        if let Some(next) = self.next {
+        if let Some(ref next) = self.next {
             let suffix = next.eval();
-            let prefix = self.this;
+            let prefix = &self.this;
             match (prefix.neg, suffix.neg) {
                 (Negation::No, Negation::No) => Inner {
-                    s: prefix.s + suffix.s,
+                    s: prefix.s.clone() + suffix.s,
                     neg: Negation::No,
                 },
                 (Negation::No, Negation::Negated) => Inner {
@@ -91,12 +92,12 @@ impl<'a> Substring<'a> {
                     neg: Negation::No,
                 },
                 (Negation::Negated, Negation::Negated) => Inner {
-                    s: prefix.s + suffix.s,
+                    s: prefix.s.clone() + suffix.s,
                     neg: Negation::Negated,
                 },
             }
         } else {
-            self.this
+            self.this.clone()
         }
     }
 }
@@ -107,10 +108,10 @@ impl<'a> Neg for Substring<'a> {
     fn neg(self) -> Self::Output {
         Substring {
             this: Inner {
-                s: self.this.s,
+                s: self.this.s.clone(),
                 neg: -self.this.neg,
             },
-            ..self
+            next: self.next.clone(),
         }
     }
 }
@@ -119,7 +120,7 @@ impl<'a> Add for Substring<'a> {
     type Output = Substring<'a>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        self.concat(rhs)
+        self.concat(&rhs)
     }
 }
 
@@ -128,6 +129,36 @@ impl<'a> Sub for Substring<'a> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
+    }
+}
+
+impl<'a> Neg for &Substring<'a> {
+    type Output = Substring<'a>;
+
+    fn neg(self) -> Self::Output {
+        Substring {
+            this: Inner {
+                s: self.this.s.clone(),
+                neg: -self.this.neg,
+            },
+            next: self.next.clone(),
+        }
+    }
+}
+
+impl<'a> Add for &Substring<'a> {
+    type Output = Substring<'a>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self.concat(rhs)
+    }
+}
+
+impl<'a> Sub for &Substring<'a> {
+    type Output = Substring<'a>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + &-rhs
     }
 }
 
@@ -166,14 +197,17 @@ impl<'a> From<&str> for Substring<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::{Inner, Substring};
 
     #[test]
     fn exprs() {
-        // let a: Substring = "aa".into();
-        // let b: Substring = "bb".into();
-        // let c: Substring = "cc".into();
-        // let s: String = (a + b - c + c + a - a).into();
+        let a: Substring = "aa".into();
+        let b: Substring = "bb".into();
+        let c: Substring = "cc".into();
+        let s: String = (((((&a + &b) - &c) + &c) + &a) - &a).into();
+        assert_eq!("aabb", &s);
     }
 
     #[test]
@@ -190,19 +224,19 @@ mod tests {
 
         let exp = Substring {
             this: Inner::new("aa".to_string(), false),
-            next: Some(Box::new(Substring {
+            next: Some(Arc::new(Substring {
                 this: Inner::new("bb".to_string(), true),
                 next: None,
             })),
         };
 
-        let res = a.concat(b);
+        let res = a.concat(&b);
 
         assert_eq!(&exp, &res);
 
         let exp2 = Substring {
             this: Inner::new("cc".to_string(), false),
-            next: Some(Box::new(exp)),
+            next: Some(Arc::new(exp)),
         };
 
         let c = Substring {
@@ -210,7 +244,7 @@ mod tests {
             next: None,
         };
 
-        let res = c.concat(res);
+        let res = c.concat(&res);
 
         assert_eq!(&exp2, &res);
     }
