@@ -1,3 +1,20 @@
+//! strings you can subtract
+//!
+//! i promise this is something you need in your life, $100%
+//!
+//! ## example
+//!
+//! ```rust
+//! use switchstring::Switchstring;
+//!
+//! let a = "I promise I love maths";
+//! let b = "maths";
+//! let c = "cute rustaceans such as ferris";
+//! let d: Switchstring = "I promise ".into();
+//! let improved = String::from(-d + a - b + c);
+//! assert_eq!("I love cute rustaceans such as ferris", improved);
+//! ```
+
 use std::{
     borrow::Cow,
     ops::{Add, Neg, Sub},
@@ -21,26 +38,34 @@ impl Neg for Negation {
     }
 }
 
+/// a cow string that can be negative
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Inner<'a> {
     s: Cow<'a, str>,
     neg: Negation,
 }
 
+/// a string you can subtract from. you can add or subtract [`String`]s or [`&str`]s or other
+/// [`Switchstring`]s from these.
+///
+/// to create one, use the `impl From<&str>`/`From<String>` implementations. to collapse one into a
+/// normal [`String`], use the `impl From<Switchstring> for String`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Switchstring<'a> {
     this: Inner<'a>,
+    // of course this is a linked list
     prev: Option<Arc<Switchstring<'a>>>,
 }
 
 impl<'a> Switchstring<'a> {
-    fn concat<'b: 'a>(&self, other: &Switchstring<'b>) -> Switchstring<'a> {
+    /// prepends the given [`Switchstring`] to `self`, returning a new [`Switchstring`]
+    fn prepend<'b: 'a>(&self, other: &Switchstring<'b>) -> Switchstring<'a> {
         // base case: self is the end of a list and other is an arbitrary substring
         // recursive case:
-        if let Some(ref next) = self.prev {
+        if let Some(ref prev) = self.prev {
             Switchstring {
                 this: self.this.clone(),
-                prev: Some(Arc::new(next.concat(other))),
+                prev: Some(Arc::new(prev.prepend(other))),
             }
         } else {
             // base case: directly put the next list in the next field
@@ -51,13 +76,15 @@ impl<'a> Switchstring<'a> {
         }
     }
 
+    /// evaluates a [`Switchstring`] into an [`Inner`]. this allows for negative strings for
+    /// absolutely deranged ideas such as adding a string to a negative string.
     fn eval(&self) -> Inner<'a> {
         // base case: end of the list
         // recursive case: evaluate rhs and then self
         if let Some(ref prev) = self.prev {
             let prefix = prev.eval();
             let suffix = &self.this;
-            println!("eval prefix {:?} suffix {:?}", suffix, prefix);
+            // println!("eval prefix {:?} suffix {:?}", suffix, prefix);
             match (prefix.neg, suffix.neg) {
                 (Negation::No, Negation::No) => Inner {
                     s: prefix.s + suffix.s.clone(),
@@ -71,7 +98,7 @@ impl<'a> Switchstring<'a> {
                         .unwrap_or_else(|| prefix.s.to_owned()),
                     neg: Negation::No,
                 },
-                // choice: -"a" + "b" = "b" (non negated will dominate)
+                // choice: -"a" + "b" = "b" (non negated will dominate, for practicality reasons)
                 (Negation::Negated, Negation::No) => Inner {
                     s: suffix
                         .s
@@ -91,6 +118,8 @@ impl<'a> Switchstring<'a> {
     }
 }
 
+// horrifying number of impls follow. i could not be bothered to write a macro,
+
 impl<'a> Neg for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
@@ -109,7 +138,7 @@ impl<'a> Add<&str> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: &str) -> Self::Output {
-        Switchstring::from(rhs).concat(&self)
+        Switchstring::from(rhs).prepend(&self)
     }
 }
 
@@ -117,7 +146,7 @@ impl<'a> Add<String> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: String) -> Self::Output {
-        Switchstring::from(rhs).concat(&self)
+        Switchstring::from(rhs).prepend(&self)
     }
 }
 
@@ -125,7 +154,7 @@ impl<'a> Add<&str> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: &str) -> Self::Output {
-        Switchstring::from(rhs).concat(&self)
+        Switchstring::from(rhs).prepend(&self)
     }
 }
 
@@ -133,7 +162,7 @@ impl<'a> Add<String> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: String) -> Self::Output {
-        Switchstring::from(rhs).concat(&self)
+        Switchstring::from(rhs).prepend(&self)
     }
 }
 
@@ -141,7 +170,7 @@ impl<'a> Add<Switchstring<'a>> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: Switchstring<'a>) -> Self::Output {
-        rhs.concat(&self)
+        rhs.prepend(&self)
     }
 }
 
@@ -149,7 +178,7 @@ impl<'a> Add<&Switchstring<'a>> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: &Switchstring<'a>) -> Self::Output {
-        rhs.concat(&self)
+        rhs.prepend(&self)
     }
 }
 
@@ -187,7 +216,7 @@ impl<'a> Add<Switchstring<'a>> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: Switchstring<'a>) -> Self::Output {
-        rhs.concat(&self)
+        rhs.prepend(&self)
     }
 }
 
@@ -195,7 +224,7 @@ impl<'a> Add<&Switchstring<'a>> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
     fn add(self, rhs: &Switchstring<'a>) -> Self::Output {
-        rhs.concat(&self)
+        rhs.prepend(&self)
     }
 }
 
@@ -272,6 +301,9 @@ impl<'a> From<&str> for Switchstring<'a> {
     }
 }
 
+#[cfg(doctest)]
+doc_comment::doctest!("../README.md");
+
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, sync::Arc};
@@ -321,7 +353,7 @@ mod tests {
             })),
         };
 
-        let res = a.concat(&b);
+        let res = a.prepend(&b);
 
         assert_eq!(&exp, &res);
 
@@ -335,7 +367,7 @@ mod tests {
             prev: None,
         };
 
-        let res = c.concat(&res);
+        let res = c.prepend(&res);
 
         assert_eq!(&exp2, &res);
     }
