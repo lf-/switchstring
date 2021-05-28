@@ -91,12 +91,6 @@ impl<'a> Switchstring<'a> {
     }
 }
 
-impl<'a> AsRef<Switchstring<'a>> for Switchstring<'a> {
-    fn as_ref(&self) -> &Switchstring<'a> {
-        self
-    }
-}
-
 impl<'a> Neg for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
@@ -111,19 +105,67 @@ impl<'a> Neg for Switchstring<'a> {
     }
 }
 
-impl<'a, AR: AsRef<Switchstring<'a>>> Add<AR> for Switchstring<'a> {
+impl<'a> Add<&str> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
-    fn add(self, rhs: AR) -> Self::Output {
-        rhs.as_ref().concat(&self)
+    fn add(self, rhs: &str) -> Self::Output {
+        Switchstring::from(rhs).concat(&self)
     }
 }
 
-impl<'a, AR: AsRef<Switchstring<'a>>> Sub<AR> for Switchstring<'a> {
+impl<'a> Add<String> for Switchstring<'a> {
     type Output = Switchstring<'a>;
 
-    fn sub(self, rhs: AR) -> Self::Output {
-        self + -(rhs.as_ref())
+    fn add(self, rhs: String) -> Self::Output {
+        Switchstring::from(rhs).concat(&self)
+    }
+}
+
+impl<'a> Add<&str> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn add(self, rhs: &str) -> Self::Output {
+        Switchstring::from(rhs).concat(&self)
+    }
+}
+
+impl<'a> Add<String> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn add(self, rhs: String) -> Self::Output {
+        Switchstring::from(rhs).concat(&self)
+    }
+}
+
+impl<'a> Add<Switchstring<'a>> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn add(self, rhs: Switchstring<'a>) -> Self::Output {
+        rhs.concat(&self)
+    }
+}
+
+impl<'a> Add<&Switchstring<'a>> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn add(self, rhs: &Switchstring<'a>) -> Self::Output {
+        rhs.concat(&self)
+    }
+}
+
+impl<'a> Sub<Switchstring<'a>> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: Switchstring<'a>) -> Self::Output {
+        self + -rhs
+    }
+}
+
+impl<'a> Sub<&Switchstring<'a>> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: &Switchstring<'a>) -> Self::Output {
+        self + -rhs
     }
 }
 
@@ -141,19 +183,59 @@ impl<'a> Neg for &Switchstring<'a> {
     }
 }
 
-impl<'a, AR: AsRef<Switchstring<'a>>> Add<AR> for &Switchstring<'a> {
+impl<'a> Add<Switchstring<'a>> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
-    fn add(self, rhs: AR) -> Self::Output {
-        rhs.as_ref().concat(&self)
+    fn add(self, rhs: Switchstring<'a>) -> Self::Output {
+        rhs.concat(&self)
     }
 }
 
-impl<'a, AR: AsRef<Switchstring<'a>>> Sub<AR> for &Switchstring<'a> {
+impl<'a> Add<&Switchstring<'a>> for &Switchstring<'a> {
     type Output = Switchstring<'a>;
 
-    fn sub(self, rhs: AR) -> Self::Output {
-        self + -rhs.as_ref()
+    fn add(self, rhs: &Switchstring<'a>) -> Self::Output {
+        rhs.concat(&self)
+    }
+}
+
+impl<'a> Sub<String> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: String) -> Self::Output {
+        self + -Switchstring::from(rhs)
+    }
+}
+
+impl<'a> Sub<&str> for Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: &str) -> Self::Output {
+        self + -Switchstring::from(rhs)
+    }
+}
+
+impl<'a> Sub<&str> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: &str) -> Self::Output {
+        self + -Switchstring::from(rhs)
+    }
+}
+
+impl<'a> Sub<Switchstring<'a>> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: Switchstring<'a>) -> Self::Output {
+        self + -rhs
+    }
+}
+
+impl<'a> Sub<&Switchstring<'a>> for &Switchstring<'a> {
+    type Output = Switchstring<'a>;
+
+    fn sub(self, rhs: &Switchstring<'a>) -> Self::Output {
+        self + -rhs
     }
 }
 
@@ -213,9 +295,9 @@ mod tests {
     #[test]
     fn exprs() {
         let a: Switchstring = "aa".into();
-        let b: Switchstring = "bb".into();
-        let c: Switchstring = "cc".into();
-        let s: String = (&a + &b - &c + &c + &a - &a - &b).into();
+        let b = "bb";
+        let c = "cc";
+        let s: String = (&a + b - c + c + &a - &a - b).into();
         assert_eq!("aabbcc", &s);
     }
 
